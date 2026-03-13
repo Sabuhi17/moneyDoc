@@ -30,6 +30,11 @@
   }
 
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+  <script>
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('/moneyDoc/sw.js');
+  }
+</script>
   body { background: var(--bg); color: var(--text); font-family: 'Geist', sans-serif; min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
 
   .ambient { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
