@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>moneyDoc</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c14;
+    --surface: #0e1420;
+    --surface2: #141c2e;
+    --surface3: #1a2338;
+    --accent-green: #12e888;
+    --accent-green-dim: rgba(18,232,136,0.12);
+    --accent-red: #ff3b55;
+    --accent-red-dim: rgba(255,59,85,0.12);
+    --accent-blue: #3b82f6;
+    --accent-blue-dim: rgba(59,130,246,0.12);
+    --accent-gold: #f59e0b;
+    --text: #e8edf8;
+    --text-2: #94a3c4;
+    --text-3: #4a5878;
+    --border: rgba(255,255,255,0.06);
+    --border-active: rgba(255,255,255,0.12);
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'Geist', sans-serif; min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+
+  .ambient { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
+  .ambient-blob { position:absolute; border-radius:50%; filter:blur(80px); opacity:0.06; }
+  .blob-1 { width:400px; height:400px; background:var(--accent-green); top:-100px; left:-100px; }
+  .blob-2 { width:350px; height:350px; background:var(--accent-blue); bottom:100px; right:-80px; }
+
+  .app { max-width:430px; margin:0 auto; padding-bottom:88px; position:relative; z-index:1; min-height:100vh; }
+
+  /* HEADER */
+  .header { padding:44px 24px 0; display:flex; justify-content:space-between; align-items:flex-start; }
+  .logo { display:flex; flex-direction:column; }
+  .logo-name { font-family:'Instrument Serif',serif; font-size:26px; font-weight:400; color:var(--text); letter-spacing:-0.5px; line-height:1; }
+  .logo-name span { color:var(--accent-green); }
+  .logo-sub { font-size:11px; color:var(--text-3); letter-spacing:0.08em; text-transform:uppercase; margin-top:4px; }
+
+  /* Month navigator */
+  .month-nav { display:flex; align-items:center; gap:6px; }
+  .month-nav-btn {
+    width:30px; height:30px; border-radius:50%; background:var(--surface2); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-3);
+    transition:all 0.2s;
+  }
+  .month-nav-btn:hover { border-color:var(--border-active); color:var(--text-2); }
+  .month-pill {
+    background:var(--surface2); border:1px solid var(--border-active);
+    padding:7px 14px; border-radius:100px; font-size:12px; font-weight:500;
+    color:var(--text-2); cursor:pointer; transition:all 0.2s; min-width:110px; text-align:center;
+    position:relative;
+  }
+  .month-pill:hover { border-color:rgba(18,232,136,0.3); color:var(--accent-green); }
+  .month-pill.is-past { color:var(--accent-gold); border-color:rgba(245,158,11,0.3); }
+
+  /* TABS */
+  .tabs { display:flex; gap:6px; padding:24px 24px 0; overflow-x:auto; scrollbar-width:none; }
+  .tabs::-webkit-scrollbar { display:none; }
+  .tab { flex-shrink:0; display:flex; align-items:center; gap:7px; padding:9px 16px; border-radius:100px; font-size:13px; font-weight:500; border:1px solid var(--border); background:transparent; color:var(--text-3); cursor:pointer; transition:all 0.2s; }
+  .tab svg { opacity:0.5; transition:opacity 0.2s; }
+  .tab:hover { border-color:var(--border-active); color:var(--text-2); }
+  .tab.active { background:var(--text); color:var(--bg); border-color:var(--text); font-weight:600; }
+  .tab.active svg { opacity:1; }
+
+  .section { display:none; padding:20px 24px 0; }
+  .section.active { display:block; }
+
+  /* BALANCE HERO */
+  .balance-hero { background:linear-gradient(145deg,#0d1928 0%,#0a1a10 100%); border:1px solid rgba(18,232,136,0.15); border-radius:24px; padding:28px; margin-bottom:14px; position:relative; overflow:hidden; }
+  .balance-hero::before { content:''; position:absolute; top:-60px; right:-60px; width:180px; height:180px; background:radial-gradient(circle,rgba(18,232,136,0.1) 0%,transparent 70%); }
+  .balance-label { font-size:11px; color:var(--text-3); text-transform:uppercase; letter-spacing:0.1em; font-weight:500; }
+  .balance-amount { font-family:'Instrument Serif',serif; font-size:46px; color:var(--accent-green); margin:8px 0 6px; letter-spacing:-2px; line-height:1; }
+  .balance-amount.negative { color:var(--accent-red); }
+  .balance-meta { font-size:13px; color:var(--text-3); display:flex; gap:16px; }
+  .balance-meta-item { display:flex; align-items:center; gap:5px; }
+  .dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .dot-green { background:var(--accent-green); }
+  .dot-red { background:var(--accent-red); }
+
+  /* STAT GRID */
+  .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 16px; transition:border-color 0.2s,transform 0.15s; }
+  .stat-card:active { transform:scale(0.98); }
+  .stat-icon { width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; margin-bottom:12px; }
+  .stat-icon.green { background:var(--accent-green-dim); color:var(--accent-green); }
+  .stat-icon.red   { background:var(--accent-red-dim); color:var(--accent-red); }
+  .stat-icon.blue  { background:var(--accent-blue-dim); color:var(--accent-blue); }
+  .stat-icon.gold  { background:rgba(245,158,11,0.12); color:var(--accent-gold); }
+  .stat-label { font-size:11px; color:var(--text-3); text-transform:uppercase; letter-spacing:0.06em; font-weight:500; }
+  .stat-val { font-family:'Instrument Serif',serif; font-size:22px; font-weight:400; margin-top:2px; letter-spacing:-0.5px; }
+  .stat-val.green { color:var(--accent-green); }
+  .stat-val.red { color:var(--accent-red); }
+  .stat-val.blue { color:var(--accent-blue); }
+  .stat-val.gold { color:var(--accent-gold); }
+
+  /* CARD */
+  .sec-heading { font-family:'Instrument Serif',serif; font-size:20px; font-weight:400; color:var(--text); margin-bottom:14px; letter-spacing:-0.3px; }
+  .sec-heading-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:12px; }
+  .card-title { font-size:13px; font-weight:600; color:var(--text-2); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+  .card-title svg { color:var(--text-3); }
+
+  /* FORM */
+  .form-label { font-size:11px; color:var(--text-3); text-transform:uppercase; letter-spacing:0.08em; font-weight:500; display:block; margin-bottom:7px; }
+  .form-group { margin-bottom:14px; }
+  .form-row { display:flex; gap:8px; }
+  input[type="number"], input[type="text"], select {
+    flex:1; width:100%; background:var(--surface2); border:1px solid var(--border);
+    border-radius:var(--radius-sm); padding:11px 14px; color:var(--text);
+    font-family:'Geist',sans-serif; font-size:14px; font-weight:400; outline:none;
+    transition:border-color 0.2s,background 0.2s; appearance:none; -webkit-appearance:none;
+  }
+  input:focus, select:focus { border-color:var(--border-active); background:var(--surface3); }
+  select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234a5878' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:34px; }
+  select option { background:#111827; }
+  input::placeholder { color:var(--text-3); }
+
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:11px 18px; border-radius:var(--radius-sm); border:none; font-family:'Geist',sans-serif; font-weight:600; font-size:13px; cursor:pointer; transition:all 0.18s; white-space:nowrap; letter-spacing:0.01em; }
+  .btn-primary { background:var(--accent-green); color:#060a10; }
+  .btn-primary:hover { filter:brightness(1.08); }
+  .btn-primary:active { transform:scale(0.97); filter:brightness(0.95); }
+  .btn-income { background:var(--accent-green-dim); color:var(--accent-green); border:1px solid rgba(18,232,136,0.25); }
+  .btn-income:active { transform:scale(0.97); }
+  .btn-expense { background:var(--accent-red-dim); color:var(--accent-red); border:1px solid rgba(255,59,85,0.25); }
+  .btn-expense:active { transform:scale(0.97); }
+  .btn-full { width:100%; padding:13px; border-radius:12px; font-size:14px; }
+  .btn-ghost { background:transparent; color:var(--text-3); border:1px solid var(--border); }
+  .btn-ghost:hover { border-color:var(--border-active); color:var(--text-2); }
+
+  /* TX LIST */
+  .tx-item { display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid var(--border); animation:fadeUp 0.25s ease; }
+  .tx-item:last-child { border-bottom:none; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  .tx-dot { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .tx-dot.income  { background:var(--accent-green-dim); color:var(--accent-green); }
+  .tx-dot.expense { background:var(--accent-red-dim); color:var(--accent-red); }
+  .tx-info { flex:1; min-width:0; }
+  .tx-cat  { font-size:13px; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tx-date { font-size:11px; color:var(--text-3); margin-top:1px; }
+  .tx-amount { font-family:'Instrument Serif',serif; font-size:16px; font-weight:400; flex-shrink:0; }
+  .tx-amount.income  { color:var(--accent-green); }
+  .tx-amount.expense { color:var(--accent-red); }
+  .tx-del { background:none; border:none; cursor:pointer; color:var(--text-3); display:flex; align-items:center; padding:4px; border-radius:6px; transition:color 0.15s,background 0.15s; flex-shrink:0; }
+  .tx-del:hover { color:var(--accent-red); background:var(--accent-red-dim); }
+
+  /* PROGRESS */
+  .progress-item { margin-bottom:16px; }
+  .progress-header { display:flex; justify-content:space-between; margin-bottom:7px; }
+  .progress-label { font-size:13px; font-weight:500; color:var(--text-2); }
+  .progress-meta  { font-size:12px; color:var(--text-3); }
+  .progress-track { height:4px; background:var(--surface3); border-radius:100px; overflow:hidden; }
+  .progress-fill  { height:100%; border-radius:100px; transition:width 0.7s cubic-bezier(0.34,1.56,0.64,1); }
+  .pf-green { background:var(--accent-green); }
+  .pf-red   { background:var(--accent-red); }
+  .pf-blue  { background:var(--accent-blue); }
+  .pf-gold  { background:var(--accent-gold); }
+
+  /* TIP CARD */
+  .tip-card { background:linear-gradient(135deg,rgba(18,232,136,0.04),rgba(59,130,246,0.04)); border:1px solid rgba(18,232,136,0.1); border-radius:var(--radius); padding:16px; margin-bottom:14px; font-size:13px; line-height:1.6; color:var(--text-3); }
+  .tip-card strong { color:var(--text-2); font-weight:600; }
+
+  /* GOAL RING */
+  .goal-hero { background:linear-gradient(145deg,#0d1928,#0d1520); border:1px solid rgba(59,130,246,0.15); border-radius:20px; padding:22px; margin-bottom:12px; }
+  .goal-ring-layout { display:flex; align-items:center; gap:22px; margin:16px 0 12px; }
+  .ring-wrap { flex-shrink:0; }
+  .ring-svg { width:82px; height:82px; }
+  .ring-track { fill:none; stroke:var(--surface3); stroke-width:7; }
+  .ring-fill  { fill:none; stroke:url(#ringGrad); stroke-width:7; stroke-linecap:round; stroke-dasharray:201; stroke-dashoffset:201; transition:stroke-dashoffset 1.2s cubic-bezier(0.34,1.56,0.64,1); transform:rotate(-90deg); transform-origin:center; }
+  .goal-details { flex:1; }
+  .goal-name   { font-size:15px; font-weight:600; color:var(--text); margin-bottom:4px; }
+  .goal-remain { font-size:12px; color:var(--text-3); }
+  .goal-remain span { color:var(--accent-blue); font-weight:600; }
+
+  /* CALC RESULT */
+  .calc-result { background:var(--surface2); border-radius:12px; padding:16px; margin-top:12px; display:none; border:1px solid var(--border); }
+  .calc-result.show { display:block; }
+  .calc-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; }
+  .calc-row:last-child { border-bottom:none; padding-bottom:0; }
+  .calc-row-label { color:var(--text-3); }
+  .calc-row-val   { font-weight:600; color:var(--text); }
+  .calc-row.highlight .calc-row-val { font-family:'Instrument Serif',serif; font-size:20px; color:var(--accent-green); }
+
+  /* MARKET */
+  .live-badge { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--accent-green); font-weight:600; letter-spacing:0.06em; text-transform:uppercase; }
+  .live-dot { width:6px; height:6px; border-radius:50%; background:var(--accent-green); animation:livePulse 2s infinite; }
+  @keyframes livePulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(18,232,136,0.4)} 50%{opacity:0.6;box-shadow:0 0 0 4px rgba(18,232,136,0)} }
+  .ticker-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; margin-bottom:8px; display:flex; align-items:center; gap:14px; cursor:pointer; transition:border-color 0.2s,transform 0.15s; text-decoration:none; color:inherit; }
+  .ticker-card:hover { border-color:var(--border-active); transform:translateY(-1px); }
+  .ticker-logo { width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .ticker-name  { font-size:14px; font-weight:600; }
+  .ticker-sym   { font-size:11px; color:var(--text-3); margin-top:2px; }
+  .ticker-right { text-align:right; margin-left:auto; }
+  .ticker-price { font-family:'Instrument Serif',serif; font-size:16px; letter-spacing:-0.3px; }
+  .ticker-chg   { font-size:11px; font-weight:600; margin-top:3px; padding:2px 8px; border-radius:6px; display:inline-block; }
+  .chg-up   { color:var(--accent-green); background:var(--accent-green-dim); }
+  .chg-down { color:var(--accent-red); background:var(--accent-red-dim); }
+  .invest-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:8px; display:flex; gap:14px; cursor:pointer; transition:border-color 0.2s; text-decoration:none; color:inherit; }
+  .invest-card:hover { border-color:var(--border-active); }
+  .invest-icon  { width:44px; height:44px; border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+  .invest-body  { flex:1; }
+  .invest-title { font-size:14px; font-weight:600; margin-bottom:3px; }
+  .invest-desc  { font-size:12px; color:var(--text-3); line-height:1.45; }
+  .invest-tags  { display:flex; gap:5px; margin-top:8px; flex-wrap:wrap; }
+  .tag { font-size:10px; padding:3px 9px; border-radius:6px; font-weight:600; letter-spacing:0.03em; }
+  .tag.green  { background:var(--accent-green-dim); color:var(--accent-green); }
+  .tag.blue   { background:var(--accent-blue-dim); color:var(--accent-blue); }
+  .tag.orange { background:rgba(245,158,11,0.12); color:var(--accent-gold); }
+
+  /* BOTTOM NAV */
+  .bottom-nav { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:430px; background:rgba(8,12,20,0.88); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); border-top:1px solid var(--border); display:flex; padding:10px 6px 20px; z-index:100; }
+  .nav-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; padding:4px 0; transition:all 0.2s; -webkit-tap-highlight-color:transparent; }
+  .nav-icon  { width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:10px; transition:all 0.2s; color:var(--text-3); }
+  .nav-label { font-size:10px; color:var(--text-3); font-weight:500; letter-spacing:0.02em; transition:color 0.2s; }
+  .nav-item.active .nav-icon  { background:rgba(18,232,136,0.12); color:var(--accent-green); }
+  .nav-item.active .nav-label { color:var(--accent-green); }
+
+  .empty-state { text-align:center; padding:36px 20px; color:var(--text-3); font-size:13px; }
+  .empty-state svg { margin:0 auto 10px; display:block; opacity:0.3; }
+
+  /* ── HISTORY SECTION ── */
+  .history-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px; }
+  .history-month-card {
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:14px 12px; cursor:pointer; transition:all 0.2s; text-align:center;
+  }
+  .history-month-card:hover { border-color:var(--border-active); transform:translateY(-1px); }
+  .history-month-card.current { border-color:rgba(18,232,136,0.3); background:var(--accent-green-dim); }
+  .hmc-month  { font-size:12px; font-weight:600; color:var(--text-2); margin-bottom:6px; }
+  .hmc-bal    { font-family:'Instrument Serif',serif; font-size:17px; letter-spacing:-0.5px; }
+  .hmc-bal.pos { color:var(--accent-green); }
+  .hmc-bal.neg { color:var(--accent-red); }
+  .hmc-bal.zero { color:var(--text-3); }
+  .hmc-sub    { font-size:10px; color:var(--text-3); margin-top:3px; }
+
+  /* Year selector */
+  .year-row { display:flex; gap:8px; margin-bottom:16px; overflow-x:auto; scrollbar-width:none; }
+  .year-row::-webkit-scrollbar { display:none; }
+  .year-chip { flex-shrink:0; padding:6px 14px; border-radius:100px; border:1px solid var(--border); background:transparent; color:var(--text-3); font-family:'Geist',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.2s; }
+  .year-chip.active { background:var(--surface2); border-color:var(--border-active); color:var(--text); }
+
+  /* History detail modal */
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; display:flex; align-items:flex-end; justify-content:center; opacity:0; pointer-events:none; transition:opacity 0.25s; }
+  .modal-overlay.open { opacity:1; pointer-events:all; }
+  .modal-sheet { background:var(--surface); border:1px solid var(--border); border-radius:24px 24px 0 0; width:100%; max-width:430px; max-height:85vh; overflow-y:auto; padding:24px; transform:translateY(30px); transition:transform 0.3s cubic-bezier(0.34,1.2,0.64,1); }
+  .modal-overlay.open .modal-sheet { transform:translateY(0); }
+  .modal-handle { width:40px; height:4px; background:var(--surface3); border-radius:2px; margin:0 auto 20px; }
+  .modal-title { font-family:'Instrument Serif',serif; font-size:22px; margin-bottom:4px; }
+  .modal-sub   { font-size:12px; color:var(--text-3); margin-bottom:20px; }
+
+  /* Year summary bar chart */
+  .bar-chart { display:flex; align-items:flex-end; gap:6px; height:80px; margin-bottom:20px; }
+  .bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end; }
+  .bar { width:100%; border-radius:5px 5px 0 0; transition:height 0.6s cubic-bezier(0.34,1.2,0.64,1); cursor:pointer; min-height:3px; position:relative; }
+  .bar.income-bar  { background:var(--accent-green); opacity:0.7; }
+  .bar.expense-bar { background:var(--accent-red); opacity:0.7; }
+  .bar:hover { opacity:1; }
+  .bar-label { font-size:9px; color:var(--text-3); text-align:center; }
+
+  /* Readonly past month notice */
+  .past-banner { background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2); border-radius:12px; padding:12px 16px; margin-bottom:14px; font-size:12px; color:var(--accent-gold); display:flex; align-items:center; gap:10px; }
+</style>
+</head>
+<body>
+<div class="ambient">
+  <div class="ambient-blob blob-1"></div>
+  <div class="ambient-blob blob-2"></div>
+</div>
+
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-name">money<span>Doc</span></div>
+      <div class="logo-sub">Büdcə & Yatırım</div>
+    </div>
+    <div class="month-nav">
+      <div class="month-nav-btn" onclick="shiftMonth(-1)">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+      </div>
+      <div class="month-pill" id="currentMonth" onclick="switchTab('history')">—</div>
+      <div class="month-nav-btn" onclick="shiftMonth(+1)">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('dashboard')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      İcmal
+    </div>
+    <div class="tab" onclick="switchTab('income')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      Gəlir
+    </div>
+    <div class="tab" onclick="switchTab('expense')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+      Xərc
+    </div>
+    <div class="tab" onclick="switchTab('savings')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      Qənaət
+    </div>
+    <div class="tab" onclick="switchTab('history')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 16 4-4 4 4 4-4"/></svg>
+      Tarixçə
+    </div>
+    <div class="tab" onclick="switchTab('market')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+      Birja
+    </div>
+  </div>
+
+  <!-- ===== DASHBOARD ===== -->
+  <div class="section active" id="tab-dashboard">
+    <div id="past-banner-dashboard"></div>
+    <div class="balance-hero">
+      <div class="balance-label">Aylıq Xalis Balans</div>
+      <div class="balance-amount" id="dash-balance">₼0.00</div>
+      <div class="balance-meta">
+        <div class="balance-meta-item"><div class="dot dot-green"></div><span id="dash-income-sum">₼0</span></div>
+        <div class="balance-meta-item"><div class="dot dot-red"></div><span id="dash-expense-sum">₼0</span></div>
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-icon green"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>
+        <div class="stat-label">Gəlir</div>
+        <div class="stat-val green" id="stat-income">₼0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div>
+        <div class="stat-label">Xərc</div>
+        <div class="stat-val red" id="stat-expense">₼0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon blue"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6v4l2.5 2.5"/></svg></div>
+        <div class="stat-label">Qənaət</div>
+        <div class="stat-val blue" id="stat-savings">₼0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon gold"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/></svg></div>
+        <div class="stat-label">Xərc nisbəti</div>
+        <div class="stat-val gold" id="stat-pct">0%</div>
+      </div>
+    </div>
+    <div class="card" id="cat-progress-wrap" style="display:none">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0 1 0 20"/><path d="M12 2a10 10 0 0 0 0 20"/></svg>
+        Xərc Kateqoriyaları
+      </div>
+      <div id="cat-progress"></div>
+    </div>
+    <div class="tip-card" id="daily-tip"><strong>Tövsiyə —</strong> Gəlir və xərclərini qeyd et, maliyyə vəziyyətini analiz edək.</div>
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+        Son Əməliyyatlar
+      </div>
+      <div id="dash-tx-list"><div class="empty-state"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>Hələ əməliyyat yoxdur</div></div>
+    </div>
+  </div>
+
+  <!-- ===== INCOME ===== -->
+  <div class="section" id="tab-income">
+    <div class="sec-heading">Gəlir</div>
+    <div id="past-banner-income"></div>
+    <div class="card" id="income-form-card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        Yeni Gəlir Əlavə Et
+      </div>
+      <div class="form-group">
+        <label class="form-label">Kateqoriya</label>
+        <select id="income-cat">
+          <option value="Maaş">Maaş</option>
+          <option value="Əlavə Gəlir">Əlavə Gəlir</option>
+          <option value="Freelance">Freelance</option>
+          <option value="Kirayə">Kirayə</option>
+          <option value="Dividend">Dividend</option>
+          <option value="Hədiyyə">Hədiyyə</option>
+          <option value="Digər">Digər</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Məbləğ (₼)</label>
+        <div class="form-row">
+          <input type="number" id="income-amount" placeholder="0.00" min="0" step="0.01">
+          <button class="btn btn-income" onclick="addTx('income')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
+            Əlavə et
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="stat-grid" style="margin-bottom:14px">
+      <div class="stat-card">
+        <div class="stat-icon green"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>
+        <div class="stat-label">Bu ay gəlir</div>
+        <div class="stat-val green" id="income-total-stat">₼0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon blue"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+        <div class="stat-label">Əməliyyat sayı</div>
+        <div class="stat-val blue" id="income-count-stat">0</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+        Gəlir Tarixçəsi
+      </div>
+      <div id="income-tx-list"><div class="empty-state"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Hələ gəlir qeyd edilməyib</div></div>
+    </div>
+  </div>
+
+  <!-- ===== EXPENSE ===== -->
+  <div class="section" id="tab-expense">
+    <div class="sec-heading">Xərc</div>
+    <div id="past-banner-expense"></div>
+    <div class="card" id="expense-form-card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        Yeni Xərc Əlavə Et
+      </div>
+      <div class="form-group">
+        <label class="form-label">Kateqoriya</label>
+        <select id="expense-cat">
+          <option value="Qida">Qida</option>
+          <option value="Nəqliyyat">Nəqliyyat</option>
+          <option value="Kommunal">Kommunal</option>
+          <option value="Əyləncə">Əyləncə</option>
+          <option value="Sağlamlıq">Sağlamlıq</option>
+          <option value="Geyim">Geyim</option>
+          <option value="Təhsil">Təhsil</option>
+          <option value="Restoran">Restoran</option>
+          <option value="Alış-veriş">Alış-veriş</option>
+          <option value="Digər">Digər</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Məbləğ (₼)</label>
+        <div class="form-row">
+          <input type="number" id="expense-amount" placeholder="0.00" min="0" step="0.01">
+          <button class="btn btn-expense" onclick="addTx('expense')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+            Əlavə et
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="stat-grid" style="margin-bottom:14px">
+      <div class="stat-card">
+        <div class="stat-icon red"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div>
+        <div class="stat-label">Bu ay xərc</div>
+        <div class="stat-val red" id="expense-total-stat">₼0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon gold"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+        <div class="stat-label">Əməliyyat sayı</div>
+        <div class="stat-val gold" id="expense-count-stat">0</div>
+      </div>
+    </div>
+    <div class="card" id="exp-cat-wrap">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        Kateqoriya üzrə
+      </div>
+      <div id="exp-cat-progress"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+        Xərc Tarixçəsi
+      </div>
+      <div id="expense-tx-list"><div class="empty-state"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>Hələ xərc qeyd edilməyib</div></div>
+    </div>
+  </div>
+
+  <!-- ===== SAVINGS ===== -->
+  <div class="section" id="tab-savings">
+    <div class="sec-heading">Qənaət</div>
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+        Qənaət Kalkulyatoru
+      </div>
+      <div class="form-group"><label class="form-label">Aylıq Qənaət (₼)</label><input type="number" id="goal-monthly" placeholder="məs. 300" style="width:100%"></div>
+      <div class="form-group"><label class="form-label">Hədəf Məbləğ (₼)</label><input type="number" id="goal-total" placeholder="məs. 5000" style="width:100%"></div>
+      <div class="form-group"><label class="form-label">İllik Faiz (%) — istəyə bağlı</label><input type="number" id="goal-rate" placeholder="məs. 8" style="width:100%"></div>
+      <button class="btn btn-primary btn-full" onclick="calcSavings()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>
+        Hesabla
+      </button>
+      <div class="calc-result" id="calc-result">
+        <div class="calc-row highlight"><span class="calc-row-label">Hədəfə çatmaq üçün</span><span class="calc-row-val" id="res-months">—</span></div>
+        <div class="calc-row"><span class="calc-row-label">Aylıq qənaət</span><span class="calc-row-val" id="res-monthly">—</span></div>
+        <div class="calc-row"><span class="calc-row-label">Faizli qazanc</span><span class="calc-row-val" style="color:var(--accent-blue)" id="res-interest">—</span></div>
+        <div class="calc-row"><span class="calc-row-label">Tövsiyə</span><span class="calc-row-val" style="color:var(--accent-gold)" id="res-tip">—</span></div>
+      </div>
+    </div>
+    <div class="goal-hero">
+      <div style="font-size:12px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em">Aktiv Hədəf</div>
+      <div class="goal-ring-layout">
+        <div class="ring-wrap">
+          <svg class="ring-svg" viewBox="0 0 82 82">
+            <defs><linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#12e888"/></linearGradient></defs>
+            <circle class="ring-track" cx="41" cy="41" r="32"/>
+            <circle class="ring-fill" id="ring-progress" cx="41" cy="41" r="32"/>
+            <text x="41" y="45" text-anchor="middle" id="ring-pct-text" font-family="Instrument Serif" font-size="16" fill="#3b82f6">0%</text>
+          </svg>
+        </div>
+        <div class="goal-details">
+          <div class="goal-name" id="goal-display-name">Hədəf seçilməyib</div>
+          <div class="goal-remain">Qalan: <span id="goal-remain">—</span></div>
+          <div style="margin-top:10px;display:flex;gap:6px">
+            <input type="number" id="goal-saved-add" placeholder="₼ əlavə et" style="padding:9px 12px;font-size:12px;border-radius:9px;flex:1">
+            <button class="btn btn-primary" style="padding:9px 14px;font-size:12px;border-radius:9px" onclick="addToGoal()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 8v4l3 3"/></svg>
+        Yeni Hədəf Yarat
+      </div>
+      <div class="form-group">
+        <input type="text" id="new-goal-name" placeholder="Hədəf adı (məs. Avtomobil)" style="width:100%;margin-bottom:8px">
+        <input type="number" id="new-goal-amount" placeholder="Hədəf məbləği ₼" style="width:100%">
+      </div>
+      <button class="btn btn-primary btn-full" style="margin-top:4px" onclick="createGoal()">Hədəf Yarat</button>
+    </div>
+    <div class="tip-card"><strong>50 / 30 / 20 Qaydası —</strong> Qazancının 50%-ni ehtiyaclara, 30%-ni istəklərə, 20%-ni qənaətə ayır. Bu sadə qayda maliyyə azadlığının açarıdır.</div>
+  </div>
+
+  <!-- ===== HISTORY ===== -->
+  <div class="section" id="tab-history">
+    <div class="sec-heading-row">
+      <div class="sec-heading" style="margin-bottom:0">Tarixçə</div>
+      <div id="hist-total-badge" style="font-size:12px;color:var(--text-3)"></div>
+    </div>
+
+    <!-- Year chips -->
+    <div class="year-row" id="year-chips"></div>
+
+    <!-- Bar chart -->
+    <div class="card" style="padding:16px 20px 14px">
+      <div class="card-title" style="margin-bottom:12px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><line x1="7" y1="16" x2="7" y2="11"/><line x1="12" y1="16" x2="12" y2="8"/><line x1="17" y1="16" x2="17" y2="5"/></svg>
+        Aylıq Baxış
+      </div>
+      <div class="bar-chart" id="year-bar-chart"></div>
+      <div style="display:flex;gap:14px;margin-top:6px">
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-3)"><div style="width:10px;height:10px;border-radius:2px;background:var(--accent-green);opacity:0.7"></div>Gəlir</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-3)"><div style="width:10px;height:10px;border-radius:2px;background:var(--accent-red);opacity:0.7"></div>Xərc</div>
+      </div>
+    </div>
+
+    <!-- Month cards grid -->
+    <div class="history-grid" id="history-grid"></div>
+  </div>
+
+  <!-- ===== MARKET ===== -->
+  <div class="section" id="tab-market">
+    <div class="sec-heading-row">
+      <div class="sec-heading" style="margin-bottom:0">Birja</div>
+      <div class="live-badge"><div class="live-dot"></div> Canlı</div>
+    </div>
+    <div id="ticker-list" style="margin-bottom:24px"></div>
+    <div style="font-size:12px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Yatırım Sahələri</div>
+    <a href="https://www.borsaistanbul.com" target="_blank" class="invest-card"><div class="invest-icon" style="background:rgba(245,158,11,0.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></div><div class="invest-body"><div class="invest-title">Birja (Səhmlər)</div><div class="invest-desc">Şirkət səhmlərinə yatırım edərək uzunmüddətli gəlir əldə et.</div><div class="invest-tags"><span class="tag green">Orta risk</span><span class="tag blue">Uzunmüddətli</span></div></div></a>
+    <a href="https://www.coinbase.com" target="_blank" class="invest-card"><div class="invest-icon" style="background:rgba(255,107,53,0.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b35" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 9h6M9 12h6M9 15h6"/></svg></div><div class="invest-body"><div class="invest-title">Kriptovalyuta</div><div class="invest-desc">Bitcoin, Ethereum və digər rəqəmsal aktivlərə yatırım.</div><div class="invest-tags"><span class="tag orange">Yüksək risk</span><span class="tag blue">Qısamüddətli</span></div></div></a>
+    <a href="https://www.investing.com/etfs" target="_blank" class="invest-card"><div class="invest-icon" style="background:rgba(59,130,246,0.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div><div class="invest-body"><div class="invest-title">ETF Fondları</div><div class="invest-desc">Diversifikasiya ilə çoxlu aktivlərə bir anda yatırım et.</div><div class="invest-tags"><span class="tag green">Aşağı risk</span><span class="tag blue">Uzunmüddətli</span></div></div></a>
+    <a href="https://www.investing.com/commodities/gold" target="_blank" class="invest-card"><div class="invest-icon" style="background:rgba(245,158,11,0.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div><div class="invest-body"><div class="invest-title">Qızıl & Əmtəələr</div><div class="invest-desc">İnflyasiyaya qarşı ən etibarlı sığınacaq aktivlər.</div><div class="invest-tags"><span class="tag green">Aşağı risk</span><span class="tag orange">Sabit</span></div></div></a>
+    <a href="https://www.investing.com/real-estate" target="_blank" class="invest-card"><div class="invest-icon" style="background:rgba(18,232,136,0.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#12e888" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><div class="invest-body"><div class="invest-title">Daşınmaz Əmlak</div><div class="invest-desc">Kirayə gəliri və dəyər artımı ilə sabit yatırım.</div><div class="invest-tags"><span class="tag green">Aşağı risk</span><span class="tag blue">Uzunmüddətli</span></div></div></a>
+  </div>
+</div>
+
+<!-- Month detail modal -->
+<div class="modal-overlay" id="month-modal" onclick="closeModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title">—</div>
+    <div class="modal-sub" id="modal-sub">—</div>
+    <div class="stat-grid" style="margin-bottom:16px">
+      <div class="stat-card"><div class="stat-icon green"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div><div class="stat-label">Gəlir</div><div class="stat-val green" id="modal-income">₼0</div></div>
+      <div class="stat-card"><div class="stat-icon red"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div><div class="stat-label">Xərc</div><div class="stat-val red" id="modal-expense">₼0</div></div>
+      <div class="stat-card"><div class="stat-icon blue"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2a10 10 0 1 0 0 20"/></svg></div><div class="stat-label">Balans</div><div class="stat-val blue" id="modal-balance">₼0</div></div>
+      <div class="stat-card"><div class="stat-icon gold"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><div class="stat-label">Əməliyyat</div><div class="stat-val gold" id="modal-count">0</div></div>
+    </div>
+    <div id="modal-cat-breakdown" style="margin-bottom:16px"></div>
+    <div style="font-size:12px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Əməliyyatlar</div>
+    <div id="modal-tx-list"></div>
+    <button class="btn btn-ghost btn-full" style="margin-top:16px" onclick="closeModal()">Bağla</button>
+  </div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <div class="nav-item active" onclick="switchTab('dashboard')" id="nav-dashboard">
+    <div class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+    <div class="nav-label">İcmal</div>
+  </div>
+  <div class="nav-item" onclick="switchTab('income')" id="nav-income">
+    <div class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>
+    <div class="nav-label">Gəlir</div>
+  </div>
+  <div class="nav-item" onclick="switchTab('expense')" id="nav-expense">
+    <div class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div>
+    <div class="nav-label">Xərc</div>
+  </div>
+  <div class="nav-item" onclick="switchTab('history')" id="nav-history">
+    <div class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="m7 16 4-4 4 4 4-4"/></svg></div>
+    <div class="nav-label">Tarixçə</div>
+  </div>
+  <div class="nav-item" onclick="switchTab('market')" id="nav-market">
+    <div class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></div>
+    <div class="nav-label">Birja</div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// STORAGE — key: md-txs-YYYY-MM  (per month)
+// ═══════════════════════════════════════════════
+const MONTHS_AZ = ['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr'];
+const realNow = new Date();
+
+// viewDate — currently viewed year/month (may be in the past)
+let viewYear  = realNow.getFullYear();
+let viewMonth = realNow.getMonth(); // 0-indexed
+
+function monthKey(y, m) { return `md-txs-${y}-${String(m+1).padStart(2,'0')}`; }
+function getTxs(y, m)   { try { return JSON.parse(localStorage.getItem(monthKey(y,m)) || '[]'); } catch(e){ return []; } }
+function saveTxs(y, m, arr) { localStorage.setItem(monthKey(y,m), JSON.stringify(arr)); }
+
+function isCurrentMonth() {
+  return viewYear === realNow.getFullYear() && viewMonth === realNow.getMonth();
+}
+
+let goal = null;
+try { goal = JSON.parse(localStorage.getItem('md-goal') || 'null'); } catch(e){}
+
+// ═══════════════════════════════════════════════
+// MONTH NAVIGATION
+// ═══════════════════════════════════════════════
+function shiftMonth(delta) {
+  viewMonth += delta;
+  if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+  if (viewMonth < 0)  { viewMonth = 11; viewYear--; }
+  refreshAll();
+}
+
+function updateMonthPill() {
+  const pill = document.getElementById('currentMonth');
+  pill.textContent = MONTHS_AZ[viewMonth] + ' ' + viewYear;
+  const isPast = !isCurrentMonth();
+  pill.className = 'month-pill' + (isPast ? ' is-past' : '');
+}
+
+function pastBanner() {
+  if (isCurrentMonth()) return '';
+  return `<div class="past-banner">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    ${MONTHS_AZ[viewMonth]} ${viewYear} — keçmiş ay. Yalnız baxış rejimi.
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('nav-' + tab)?.classList.add('active');
+  const tabOrder = ['dashboard','income','expense','savings','history','market'];
+  document.querySelectorAll('.tab')[tabOrder.indexOf(tab)]?.classList.add('active');
+
+  if (tab === 'dashboard') { updateDashboard(); renderDashTx(); }
+  if (tab === 'income')    { updateIncomePage(); }
+  if (tab === 'expense')   { updateExpensePage(); }
+  if (tab === 'savings')   { updateGoalRing(); }
+  if (tab === 'history')   { renderHistory(); }
+  if (tab === 'market')    { loadMarket(); }
+}
+
+function refreshAll() {
+  updateMonthPill();
+  const cur = document.querySelector('.section.active')?.id?.replace('tab-','');
+  if (cur) switchTab(cur);
+}
+
+// ═══════════════════════════════════════════════
+// ADD / DELETE
+// ═══════════════════════════════════════════════
+function addTx(type) {
+  if (!isCurrentMonth()) { showAlert('Keçmiş aya əlavə etmək olmaz'); return; }
+  const catEl = document.getElementById(type + '-cat');
+  const amtEl = document.getElementById(type + '-amount');
+  const amt = parseFloat(amtEl.value);
+  if (!amt || amt <= 0) { showAlert('Məbləğ daxil edin!'); return; }
+  const txs = getTxs(viewYear, viewMonth);
+  txs.unshift({ type, cat: catEl.value, amt, date: new Date().toLocaleDateString('az-AZ'), ts: Date.now() });
+  saveTxs(viewYear, viewMonth, txs);
+  amtEl.value = '';
+  if (type === 'income') updateIncomePage();
+  else updateExpensePage();
+  updateDashboard(); renderDashTx();
+}
+
+function deleteTx(ts) {
+  if (!isCurrentMonth()) { showAlert('Keçmiş aydan silmək olmaz'); return; }
+  const txs = getTxs(viewYear, viewMonth).filter(t => t.ts !== ts);
+  saveTxs(viewYear, viewMonth, txs);
+  updateDashboard(); renderDashTx(); updateIncomePage(); updateExpensePage();
+}
+
+function showAlert(msg, type='error') {
+  const el = document.createElement('div');
+  const col = type === 'error' ? 'rgba(255,59,85,0.3)' : 'rgba(18,232,136,0.3)';
+  const tcol= type === 'error' ? '#ff3b55' : '#12e888';
+  el.style.cssText = `position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1a2338;border:1px solid ${col};color:${tcol};padding:10px 18px;border-radius:10px;font-size:13px;font-weight:500;z-index:999;animation:fadeUp .25s ease;white-space:nowrap`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+}
+
+// ═══════════════════════════════════════════════
+// CAT ICONS
+// ═══════════════════════════════════════════════
+const CAT_ICONS = {
+  'Maaş':         '<path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="2"/>',
+  'Əlavə Gəlir':  '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-5"/>',
+  'Freelance':    '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+  'Kirayə':       '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  'Dividend':     '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>',
+  'Hədiyyə':      '<path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/>',
+  'Qida':         '<path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>',
+  'Nəqliyyat':    '<rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
+  'Kommunal':     '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+  'Əyləncə':      '<circle cx="12" cy="12" r="9"/><path d="M9 10a3 3 0 0 1 6 0"/>',
+  'Sağlamlıq':    '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  'Geyim':        '<path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.57a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.57a2 2 0 0 0-1.34-2.23z"/>',
+  'Təhsil':       '<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
+  'Restoran':     '<path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>',
+  'Alış-veriş':   '<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>',
+  'Digər':        '<circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>',
+};
+const DEFAULT_ICON = '<circle cx="12" cy="12" r="9"/>';
+
+// ═══════════════════════════════════════════════
+// RENDER TX LIST
+// ═══════════════════════════════════════════════
+function renderTxList(txs, containerId, emptyIconPath, emptyText, deletable=true) {
+  const el = document.getElementById(containerId);
+  if (!txs.length) {
+    el.innerHTML = `<div class="empty-state"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">${emptyIconPath}</svg>${emptyText}</div>`;
+    return;
+  }
+  el.innerHTML = txs.slice(0,30).map(tx => `
+    <div class="tx-item">
+      <div class="tx-dot ${tx.type}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${CAT_ICONS[tx.cat]||DEFAULT_ICON}</svg>
+      </div>
+      <div class="tx-info">
+        <div class="tx-cat">${tx.cat}</div>
+        <div class="tx-date">${tx.date}</div>
+      </div>
+      <div class="tx-amount ${tx.type}">${tx.type==='income'?'+':'-'}₼${tx.amt.toFixed(2)}</div>
+      ${deletable ? `<button class="tx-del" onclick="deleteTx(${tx.ts})"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}
+    </div>`).join('');
+}
+
+function catBreakdown(txs, type) {
+  const cats = {};
+  const total = txs.filter(t=>t.type===type).reduce((s,t)=>{
+    cats[t.cat]=(cats[t.cat]||0)+t.amt; return s+t.amt;
+  }, 0);
+  const sorted = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const pfClasses = type==='expense' ? ['pf-red','pf-blue','pf-gold','pf-green','pf-red'] : ['pf-green','pf-blue','pf-gold','pf-green','pf-red'];
+  return sorted.map(([cat,amt],i) => {
+    const p = total>0 ? Math.min(100,Math.round(amt/total*100)) : 0;
+    return `<div class="progress-item">
+      <div class="progress-header"><span class="progress-label">${cat}</span><span class="progress-meta">₼${amt.toFixed(0)} · ${p}%</span></div>
+      <div class="progress-track"><div class="progress-fill ${pfClasses[i]}" style="width:${p}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════
+function updateDashboard() {
+  const txs = getTxs(viewYear, viewMonth);
+  const income  = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amt,0);
+  const expense = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amt,0);
+  const balance = income - expense;
+  const pct = income>0 ? Math.round(expense/income*100) : 0;
+
+  const balEl = document.getElementById('dash-balance');
+  balEl.textContent = '₼'+balance.toFixed(2);
+  balEl.className = 'balance-amount'+(balance<0?' negative':'');
+
+  document.getElementById('dash-income-sum').textContent  = '+₼'+income.toFixed(2);
+  document.getElementById('dash-expense-sum').textContent = '-₼'+expense.toFixed(2);
+  document.getElementById('stat-income').textContent  = '₼'+income.toFixed(2);
+  document.getElementById('stat-expense').textContent = '₼'+expense.toFixed(2);
+  document.getElementById('stat-savings').textContent = '₼'+Math.max(0,balance).toFixed(2);
+  document.getElementById('stat-pct').textContent     = pct+'%';
+
+  // Cat breakdown
+  const cats={};
+  txs.filter(t=>t.type==='expense').forEach(t=>{cats[t.cat]=(cats[t.cat]||0)+t.amt;});
+  const sorted=Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const pfClasses=['pf-red','pf-blue','pf-gold','pf-green','pf-red'];
+  const catWrap=document.getElementById('cat-progress-wrap');
+  if(sorted.length){
+    catWrap.style.display='block';
+    document.getElementById('cat-progress').innerHTML=sorted.map(([cat,amt],i)=>{
+      const p=income>0?Math.min(100,Math.round(amt/income*100)):0;
+      return `<div class="progress-item"><div class="progress-header"><span class="progress-label">${cat}</span><span class="progress-meta">₼${amt.toFixed(0)} · ${p}%</span></div><div class="progress-track"><div class="progress-fill ${pfClasses[i]}" style="width:${p}%"></div></div></div>`;
+    }).join('');
+  } else { catWrap.style.display='none'; }
+
+  // Tip
+  const tipEl = document.getElementById('daily-tip');
+  if(pct>80) tipEl.innerHTML=`<strong>Diqqət —</strong> Xərclərin gəlirinin <strong>${pct}%</strong>-ni təşkil edir.`;
+  else if(pct>50) tipEl.innerHTML=`<strong>Tövsiyə —</strong> Xərc nisbətin <strong>${pct}%</strong>. 50/30/20 qaydasına əməl et.`;
+  else if(income>0) tipEl.innerHTML=`<strong>Əla —</strong> Gəlirinin <strong>${100-pct}%</strong>-ni qənaət/yatırım üçün ayıra bilərsən.`;
+  else tipEl.innerHTML=`<strong>Tövsiyə —</strong> Gəlir və xərclərini qeyd et, maliyyə vəziyyətini analiz edək.`;
+
+  // Past banner
+  document.getElementById('past-banner-dashboard').innerHTML = pastBanner();
+}
+
+function renderDashTx() {
+  const txs = getTxs(viewYear, viewMonth);
+  renderTxList(txs.slice(0,8), 'dash-tx-list', '<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/>', 'Hələ əməliyyat yoxdur', isCurrentMonth());
+}
+
+// ═══════════════════════════════════════════════
+// INCOME PAGE
+// ═══════════════════════════════════════════════
+function updateIncomePage() {
+  const txs = getTxs(viewYear, viewMonth).filter(t=>t.type==='income');
+  const total = txs.reduce((s,t)=>s+t.amt,0);
+  document.getElementById('income-total-stat').textContent = '₼'+total.toFixed(2);
+  document.getElementById('income-count-stat').textContent = txs.length;
+  document.getElementById('income-form-card').style.display = isCurrentMonth() ? 'block' : 'none';
+  document.getElementById('past-banner-income').innerHTML = pastBanner();
+  renderTxList(txs, 'income-tx-list', '<path d="M12 19V5M5 12l7-7 7 7"/>', 'Hələ gəlir qeyd edilməyib', isCurrentMonth());
+}
+
+// ═══════════════════════════════════════════════
+// EXPENSE PAGE
+// ═══════════════════════════════════════════════
+function updateExpensePage() {
+  const txs = getTxs(viewYear, viewMonth).filter(t=>t.type==='expense');
+  const total = txs.reduce((s,t)=>s+t.amt,0);
+  document.getElementById('expense-total-stat').textContent = '₼'+total.toFixed(2);
+  document.getElementById('expense-count-stat').textContent = txs.length;
+  document.getElementById('expense-form-card').style.display = isCurrentMonth() ? 'block' : 'none';
+  document.getElementById('past-banner-expense').innerHTML = pastBanner();
+  renderTxList(txs, 'expense-tx-list', '<path d="M12 5v14M5 12l7 7 7-7"/>', 'Hələ xərc qeyd edilməyib', isCurrentMonth());
+
+  const cats={};
+  txs.forEach(t=>{cats[t.cat]=(cats[t.cat]||0)+t.amt;});
+  const sorted=Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const pfClasses=['pf-red','pf-blue','pf-gold','pf-green','pf-red','pf-blue'];
+  const prog=document.getElementById('exp-cat-progress');
+  if(sorted.length){
+    prog.innerHTML=sorted.map(([cat,amt],i)=>{
+      const p=total>0?Math.min(100,Math.round(amt/total*100)):0;
+      return `<div class="progress-item"><div class="progress-header"><span class="progress-label">${cat}</span><span class="progress-meta">₼${amt.toFixed(0)} · ${p}%</span></div><div class="progress-track"><div class="progress-fill ${pfClasses[i]}" style="width:${p}%"></div></div></div>`;
+    }).join('');
+  } else { prog.innerHTML='<div style="font-size:12px;color:var(--text-3);padding:8px 0">Məlumat yoxdur</div>'; }
+}
+
+// ═══════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════
+let histSelectedYear = realNow.getFullYear();
+
+function getAllYears() {
+  // Scan localStorage for all md-txs-YYYY-MM keys
+  const years = new Set([realNow.getFullYear()]);
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    const m = k?.match(/^md-txs-(\d{4})-\d{2}$/);
+    if (m) years.add(parseInt(m[1]));
+  }
+  return [...years].sort((a,b)=>b-a);
+}
+
+function monthStats(y, m) {
+  const txs = getTxs(y, m);
+  const income  = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amt,0);
+  const expense = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amt,0);
+  return { income, expense, balance: income-expense, count: txs.length, txs };
+}
+
+function renderHistory() {
+  const years = getAllYears();
+  histSelectedYear = years.includes(histSelectedYear) ? histSelectedYear : years[0];
+
+  // Year chips
+  document.getElementById('year-chips').innerHTML = years.map(y =>
+    `<div class="year-chip ${y===histSelectedYear?'active':''}" onclick="selectHistYear(${y})">${y}</div>`
+  ).join('');
+
+  renderHistoryYear();
+}
+
+function selectHistYear(y) {
+  histSelectedYear = y;
+  renderHistory();
+}
+
+function renderHistoryYear() {
+  const y = histSelectedYear;
+  const stats = Array.from({length:12},(_,m)=>({m, ...monthStats(y,m)}));
+  const maxVal = Math.max(...stats.map(s=>Math.max(s.income,s.expense)), 1);
+
+  // Bar chart
+  const barHtml = stats.map(s => {
+    const incH = Math.round((s.income/maxVal)*68);
+    const expH = Math.round((s.expense/maxVal)*68);
+    const lbl  = MONTHS_AZ[s.m].slice(0,3);
+    const isCur = y===realNow.getFullYear() && s.m===realNow.getMonth();
+    return `<div class="bar-wrap" onclick="openMonthModal(${y},${s.m})">
+      <div style="display:flex;gap:2px;align-items:flex-end;height:72px">
+        <div class="bar income-bar"  style="height:${incH}px;width:10px${isCur?';opacity:1':''}"></div>
+        <div class="bar expense-bar" style="height:${expH}px;width:10px${isCur?';opacity:1':''}"></div>
+      </div>
+      <div class="bar-label" style="${isCur?'color:var(--accent-green);font-weight:600':''}">${lbl}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('year-bar-chart').innerHTML = barHtml;
+
+  // Monthly grid — show months with data or current year up to today
+  const curM = y===realNow.getFullYear() ? realNow.getMonth() : 11;
+  const gridHtml = Array.from({length:curM+1},(_,m)=>{
+    const s = stats[m];
+    const isCur = y===realNow.getFullYear() && m===realNow.getMonth();
+    const balClass = s.balance>0?'pos':s.balance<0?'neg':'zero';
+    return `<div class="history-month-card${isCur?' current':''}" onclick="openMonthModal(${y},${m})">
+      <div class="hmc-month">${MONTHS_AZ[m].slice(0,3)}</div>
+      <div class="hmc-bal ${balClass}">₼${Math.abs(s.balance).toFixed(0)}</div>
+      <div class="hmc-sub">${s.count} əməliyyat</div>
+    </div>`;
+  }).reverse().join('');
+  document.getElementById('history-grid').innerHTML = gridHtml || '<div style="font-size:13px;color:var(--text-3);padding:10px 0">Məlumat yoxdur</div>';
+
+  // Total badge
+  const totIncome  = stats.reduce((s,t)=>s+t.income,0);
+  const totExpense = stats.reduce((s,t)=>s+t.expense,0);
+  document.getElementById('hist-total-badge').innerHTML =
+    `<span style="color:var(--accent-green)">+₼${totIncome.toFixed(0)}</span> &nbsp; <span style="color:var(--accent-red)">-₼${totExpense.toFixed(0)}</span>`;
+}
+
+function openMonthModal(y, m) {
+  const s = monthStats(y, m);
+  document.getElementById('modal-title').textContent   = MONTHS_AZ[m]+' '+y;
+  document.getElementById('modal-sub').textContent     = s.count+' əməliyyat';
+  document.getElementById('modal-income').textContent  = '₼'+s.income.toFixed(2);
+  document.getElementById('modal-expense').textContent = '₼'+s.expense.toFixed(2);
+  const balEl = document.getElementById('modal-balance');
+  balEl.textContent = (s.balance>=0?'+':'')+'₼'+s.balance.toFixed(2);
+  balEl.className = 'stat-val '+(s.balance>=0?'green':'red');
+  document.getElementById('modal-count').textContent = s.count;
+  document.getElementById('modal-cat-breakdown').innerHTML = catBreakdown(s.txs,'expense');
+  renderTxList(s.txs, 'modal-tx-list', '<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/>', 'Bu ayda əməliyyat yoxdur', false);
+  document.getElementById('month-modal').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('month-modal')) {
+    document.getElementById('month-modal').classList.remove('open');
+  }
+}
+
+// ═══════════════════════════════════════════════
+// SAVINGS
+// ═══════════════════════════════════════════════
+function calcSavings() {
+  const monthly = parseFloat(document.getElementById('goal-monthly').value);
+  const total   = parseFloat(document.getElementById('goal-total').value);
+  const rate    = parseFloat(document.getElementById('goal-rate').value)||0;
+  if(!monthly||!total){showAlert('Məlumatları daxil edin!');return;}
+  let months_needed, interest=0;
+  if(rate>0){const r=rate/100/12;months_needed=Math.log(1+(total*r)/monthly)/Math.log(1+r);interest=total-monthly*months_needed;}
+  else{months_needed=total/monthly;}
+  const yrs=Math.floor(months_needed/12);const rem=Math.round(months_needed%12);
+  const timeStr=yrs>0?`${yrs} il ${rem} ay`:`${Math.round(months_needed)} ay`;
+  document.getElementById('res-months').textContent   = timeStr;
+  document.getElementById('res-monthly').textContent  = '₼'+monthly.toFixed(2);
+  document.getElementById('res-interest').textContent = rate>0?'+₼'+Math.abs(interest).toFixed(2):'Faiz yoxdur';
+  document.getElementById('res-tip').textContent      = monthly<100?'Aşağı sürət':monthly<500?'Orta sürət':'Yüksək sürət';
+  document.getElementById('calc-result').classList.add('show');
+}
+
+function createGoal() {
+  const name=document.getElementById('new-goal-name').value.trim();
+  const amount=parseFloat(document.getElementById('new-goal-amount').value);
+  if(!name||!amount){showAlert('Ad və məbləğ daxil edin!');return;}
+  goal={name,amount,saved:0};
+  localStorage.setItem('md-goal',JSON.stringify(goal));
+  document.getElementById('new-goal-name').value='';
+  document.getElementById('new-goal-amount').value='';
+  updateGoalRing();
+  showAlert('Hədəf yaradıldı!','success');
+}
+
+function addToGoal() {
+  if(!goal){showAlert('Əvvəlcə hədəf yarat!');return;}
+  const add=parseFloat(document.getElementById('goal-saved-add').value);
+  if(!add)return;
+  goal.saved=Math.min(goal.amount,goal.saved+add);
+  localStorage.setItem('md-goal',JSON.stringify(goal));
+  document.getElementById('goal-saved-add').value='';
+  updateGoalRing();
+}
+
+function updateGoalRing() {
+  if(!goal)return;
+  const pct=Math.round(goal.saved/goal.amount*100);
+  const offset=201-(201*pct/100);
+  document.getElementById('ring-progress').style.strokeDashoffset=offset;
+  document.getElementById('ring-pct-text').textContent=pct+'%';
+  document.getElementById('goal-display-name').textContent=goal.name;
+  document.getElementById('goal-remain').innerHTML=`<span>₼${(goal.amount-goal.saved).toFixed(2)}</span>`;
+}
+
+// ═══════════════════════════════════════════════
+// MARKET
+// ═══════════════════════════════════════════════
+function loadMarket() {
+  const tickers=[
+    {name:'Apple',sym:'AAPL',icon:'<circle cx="12" cy="12" r="9"/><path d="M12 8a4 4 0 1 0 0 8"/>',bg:'rgba(255,255,255,0.04)',price:214.29,change:+1.24},
+    {name:'Bitcoin',sym:'BTC',icon:'<circle cx="12" cy="12" r="9"/><path d="M9 9h5a2 2 0 0 1 0 4H9v4h5a2 2 0 0 0 0-4"/>',bg:'rgba(247,147,26,0.1)',price:82450,change:-2.15},
+    {name:'Qızıl',sym:'XAU/USD',icon:'<path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>',bg:'rgba(245,158,11,0.1)',price:2985.40,change:+0.67},
+    {name:'S&P 500',sym:'SPX',icon:'<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',bg:'rgba(59,130,246,0.1)',price:5641.22,change:+0.43},
+    {name:'Ethereum',sym:'ETH',icon:'<polygon points="12 2 20 7 20 17 12 22 4 17 4 7"/>',bg:'rgba(98,126,234,0.1)',price:1895.10,change:-1.88},
+    {name:'USD/AZN',sym:'USD/AZN',icon:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',bg:'rgba(18,232,136,0.08)',price:1.70,change:0.00},
+  ];
+  document.getElementById('ticker-list').innerHTML=tickers.map(t=>{
+    const rand=(Math.random()-0.5)*0.4;const ch=+(t.change+rand).toFixed(2);const up=ch>=0;
+    return `<a href="https://finance.yahoo.com/quote/${t.sym}" target="_blank" class="ticker-card">
+      <div class="ticker-logo" style="background:${t.bg}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${up?'var(--accent-green)':'var(--text-3)'}" stroke-width="1.8">${t.icon}</svg>
+      </div>
+      <div><div class="ticker-name">${t.name}</div><div class="ticker-sym">${t.sym}</div></div>
+      <div class="ticker-right">
+        <div class="ticker-price">$${t.price.toLocaleString()}</div>
+        <div class="ticker-chg ${up?'chg-up':'chg-down'}">${up?'+':''}${ch}%</div>
+      </div>
+    </a>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+updateMonthPill();
+updateDashboard();
+renderDashTx();
+loadMarket();
+updateGoalRing();
+</script>
+</body>
+</html>
