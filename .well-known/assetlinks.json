@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.sabuhi17.moneydoc",
+        "sha256_cert_fingerprints": ["D2:98:E1:6C:C0:69:61:D3:EF:E3:1B:F3:C3:4B:B4:70:B4:E0:DC:0E:8A:67:D7:00:FD:80:F8:9F:C8:08:AA:CF"]
+      }
+    }]
